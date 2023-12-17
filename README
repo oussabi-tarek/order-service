@@ -1,0 +1,5 @@
+This is a polyrepo approach of the microservice architecture.
+Each service is a separate repository. This is the most common approach for microservices.
+It is also the most flexible approach. Each service can be developed, tested, deployed, and scaled independently.
+This approach is also the most complex to manage. It requires a lot of automation and tooling to manage the services.
+It also requires a lot of discipline from the developers to ensure that the services are developed in a consistent manner.
