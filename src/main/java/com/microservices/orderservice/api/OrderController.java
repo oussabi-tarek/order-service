@@ -24,7 +24,7 @@ public class OrderController {
 
     @PostMapping
     // what this will do is resilience4j will apply circuit breaker logic to this method
-    @CircuitBreaker(name="inventory",fallbackMethod="fallbackMethod")
+    @CircuitBreaker(name="inventory")
     @TimeLimiter(name="inventory")
     @Retry(name="inventory")
     // use of CompletableFuture is to make this method asynchronous so that

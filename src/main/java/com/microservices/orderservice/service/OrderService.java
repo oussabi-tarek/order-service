@@ -8,6 +8,7 @@ import com.microservices.orderservice.domain.response.InventoryResponse;
 import com.microservices.orderservice.event.OrderPlacedEvent;
 import com.microservices.orderservice.repository.OrderRepository;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -19,6 +20,7 @@ import java.util.UUID;
 
 @Service
 @AllArgsConstructor
+@Slf4j
 public class OrderService {
     private final OrderRepository orderRepository;
     private final WebClient.Builder webClientBuilder;
@@ -39,27 +41,37 @@ public class OrderService {
                  .toList();
          // call inventory service and place order if product is in stock
         InventoryResponse[] inventoryResponsesArray  =webClientBuilder.build().get()
-                        .uri("http://localhost:8082/api/inventory",
+                        .uri("http://inventory-service/api/inventory",
                                 uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build())
                                 .retrieve()
                                 .bodyToMono(InventoryResponse[].class)
                                 .block();
         boolean allProductsInStock;
-        if(inventoryResponsesArray.length==0)
-            allProductsInStock = false;
-        else
-            allProductsInStock= Arrays.stream(inventoryResponsesArray)
-                    .allMatch(InventoryResponse::isInStock);
 
+        if(inventoryResponsesArray.length==0) {
+            log.info("No products found");
+            allProductsInStock = false;
+        }
+        else {
+            log.info("Products found");
+            for (InventoryResponse inventoryResponse : inventoryResponsesArray) {
+                log.info("InventoryResponse : {}", inventoryResponse.isInStock());
+            }
+            allProductsInStock = Arrays.stream(inventoryResponsesArray)
+                    .allMatch(InventoryResponse::isInStock);
+        }
+        log.info("allProductsInStock : {}",allProductsInStock);
         if(allProductsInStock) {
+            log.info("All products are in stock");
             orderRepository.save(order);
             // we can also define the notificationTopic as the default topic for our order service so instead ot tap the topic
             // every time we want to send to kafka we can set it as default
             kafkaTemplate.send("notificationTopic",new OrderPlacedEvent(order.getId().toString()));
             return order.getId().toString();
         }
-        else
-            throw  new RuntimeException("Product is out of stock");
+        else {
+            throw new IllegalArgumentException("Product is not in stock, please try again lat");
+        }
     }
     public OrderLineItems mapToOrderLineItems(OrderLineItemsCommand orderLineItemsCommand){
         return OrderLineItems.builder()
